@@ -1,8 +1,8 @@
 #include "client.h"
 #include "local.h"
 
-int main()
-{
+int main(int argc, char const *argv[]) {
+
     int publicfifo, privatefifo, n;
     static char buffer[PIPE_BUF];
     int backup = atoi("backup");
@@ -32,14 +32,16 @@ and save into message structure*/
         memset(msg.cmd_line, 0x0, B_SIZE);
         n = read(fileno(stdin), msg.cmd_line, B_SIZE);
 
-        if(strncmp("quit", msg.cmd_line, n-1) == 0) break;
 
-        if(strncmp("backup", msg.cmd_line, n-1) == 0)
-            write(publicfifo,msg.cmd_line,sizeof(msg.cmd_line));
+
+        if(argc>=3){
+        if(strncmp("backup", argv[1], n-1) == 0)
+            write(publicfifo,argv[1],sizeof(argv[1]));
               else {
-                if(strncmp("restore", msg.cmd_line, n-1) == 0)
-                  write(publicfifo,msg.cmd_line,sizeof(msg.cmd_line));
-                    else write(2,"Insira um comando válido",30);}
+                if(strncmp("restore", argv[1], n-1) == 0)
+                  write(publicfifo,argv[1],sizeof(argv[1]));
+                    else  write(2,"Insira um comando válido",30);}}
+          else write(2,"Insira um comando válido",30);
 
 
         write(publicfifo, &msg, sizeof(msg));
