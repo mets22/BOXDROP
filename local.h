@@ -20,6 +20,7 @@ const char *PUBLIC = "publicfifo";
 struct message {
     char fifo_name[B_SIZE];
     char cmd_line[B_SIZE];
+    int pid;
 };
 
 #endif //BOXDROP_LOCAL_H

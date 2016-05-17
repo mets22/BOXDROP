@@ -5,15 +5,19 @@
 #include "server.h"
 #include "local.h"
 
-int existeFicheiro()
+int existeFicheiro(char *nome)
+{
 
-int main() {
+}
 
-    int privatefifo, dummyfifo, publicfifo, n, done;
+int main()
+{
+
+    int privatefifo, dummyfifo, publicfifo, n, done, fd[2], pid;
     struct message msg;
     FILE *fin;
     static char buffer[PIPE_BUF];
-    char comando[10];
+    char comando[10], ficheiro[128], *c;
 
 /*creating the PUBLIC fifo*/
     mkfifo(PUBLIC,0666);
@@ -36,7 +40,13 @@ the public FIFO every time a client process finishes its activities.
 /*Read the message from PUBLIC fifo*/
     while(read(publicfifo, &msg, sizeof(msg)) > 0) {
 
+        pipe(fd);
         pid = fork();
+        c=strtok(msg.cmd_line," ");
+        strcpy(comando,msg.cmd_line);
+        c=strtok(NULL, " ");
+        strcpy(ficheiro,msg.cmd_line);
+
 
         if(pid == 0) {
 
@@ -56,7 +66,10 @@ the public FIFO every time a client process finishes its activities.
                     close(privatefifo);
                     done = 1;*/
 
-
+                    dup2(fd[1],1);
+                    close(fd[0]);
+                    close(fd[1]);
+                    execlp("sha1sum","sha1sum", ficheiro, NULL );
 
                     switch(){
                         case "backup" : ;
@@ -70,6 +83,7 @@ the public FIFO every time a client process finishes its activities.
                 perror("Not accessed the private fifo\n");
                 exit(1);
             }
+            n++;
         }
 
     }
