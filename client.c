@@ -1,12 +1,11 @@
 #include "client.h"
 #include "local.h"
 
-int main(int argc, char const *argv[]) {
+void main(int argc, char const *argv[]) {
 
-    int publicfifo, privatefifo, n;
+    int publicfifo, privatefifo, i;
     static char buffer[PIPE_BUF];
-    int backup = atoi("backup");
-    int restore = atoi("restore");
+    char * string; // o que vai ser envidado para o servidor
     struct message msg;
 
 /*Using sprintf to create a unique fifo name
@@ -26,19 +25,24 @@ and save into message structure*/
         exit(1);
     }
 
-    while(1) {
+    // Junta todos os argumentos numa so string
 
-        write(fileno(stdout), "\n cmd>", 6);
-        memset(msg.cmd_line, 0x0, B_SIZE);
-        n = read(fileno(stdin), msg.cmd_line, B_SIZE);
+    for(i=0; i<argc; i++){
+        strcat(string,argv[i]);
+        strcat(string," ");
+    }
 
+    // escreve para o servidor
 
+    write(publicfifo,string,sizeof(string));
+
+    /*while(1) {
 
         if(argc>=3){
-        if(strncmp("backup", argv[1], n-1) == 0)
+        if(strncmp("backup", argv[1], argv[1]) == 0)
             write(publicfifo,argv[1],sizeof(argv[1]));
               else {
-                if(strncmp("restore", argv[1], n-1) == 0)
+                if(strncmp("restore", argv[1], argv[1]) == 0)
                   write(publicfifo,argv[1],sizeof(argv[1]));
                     else  write(2,"Insira um comando válido",30);}}
           else write(2,"Insira um comando válido",30);
@@ -54,14 +58,14 @@ and save into message structure*/
 
         while((n = read(privatefifo, buffer, PIPE_BUF)) > 0) {
             write(fileno(stderr), buffer, n);
-        }
+        }*/
 
         close(privatefifo);
-    }
-
-    CLEANUP:
+    //}
     close(publicfifo);
-    unlink(msg.fifo_name);
 
-    return 0;
+    /*CLEANUP:
+    close(publicfifo);
+    unlink(msg.fifo_name);*/
+
 }
