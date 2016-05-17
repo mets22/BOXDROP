@@ -1,7 +1,3 @@
-//
-// Created by mets on 16-05-2016.
-//
-
 #include "client.h"
 #include "local.h"
 
@@ -9,12 +5,14 @@ int main()
 {
     int publicfifo, privatefifo, n;
     static char buffer[PIPE_BUF];
+    int backup = atoi("backup");
+    int restore = atoi("restore");
     struct message msg;
 
 /*Using sprintf to create a unique fifo name
 and save into message structure*/
     sprintf(msg.fifo_name, "/home/%d/.Backup/", getpid());
-    msg.pid = getpid();
+
 /*Creating the PRIVATE fifo*/
     if(mkfifo(msg.fifo_name,0666) < 0) {
         perror(msg.fifo_name);
@@ -34,9 +32,15 @@ and save into message structure*/
         memset(msg.cmd_line, 0x0, B_SIZE);
         n = read(fileno(stdin), msg.cmd_line, B_SIZE);
 
-        if(strncmp("quit", msg.cmd_line, n-1) == 0) {
-            break;
-        }
+        if(strncmp("quit", msg.cmd_line, n-1) == 0) break;
+
+        if(strncmp("backup", msg.cmd_line, n-1) == 0)
+            write(publicfifo,msg.cmd_line,sizeof(msg.cmd_line));
+              else {
+                if(strncmp("restore", msg.cmd_line, n-1) == 0)
+                  write(publicfifo,msg.cmd_line,sizeof(msg.cmd_line));
+                    else write(2,"Insira um comando válido",30);}
+
 
         write(publicfifo, &msg, sizeof(msg));
 

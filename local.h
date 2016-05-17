@@ -12,6 +12,7 @@
 #include <linux/limits.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define B_SIZE (PIPE_BUF/2)
 
