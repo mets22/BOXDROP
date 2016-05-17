@@ -16,6 +16,8 @@
 #define B_SIZE (PIPE_BUF/2)
 
 const char *PUBLIC = "publicfifo";
+const char *data = "/.Backup/data";
+const char *metadata = "/.Backup/metadata";
 
 struct message {
     char fifo_name[B_SIZE];

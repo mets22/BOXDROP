@@ -13,7 +13,7 @@ int main()
 
 /*Using sprintf to create a unique fifo name
 and save into message structure*/
-    sprintf(msg.fifo_name, "/home/%d/.Backup/", getpid());
+    sprintf(msg.fifo_name, "/home/mets/.Backup/");
     msg.pid = getpid();
 /*Creating the PRIVATE fifo*/
     if(mkfifo(msg.fifo_name,0666) < 0) {
