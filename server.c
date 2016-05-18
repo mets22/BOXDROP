@@ -7,6 +7,32 @@
 
 int existeFicheiro(char *ficheiro)
 {
+    int fd[2],fd2[2],x,temp,i,tlinha;
+    char* slink,templinha,linha;
+    pipe(fd);
+
+    /*execlp("find","find","home/user/.Backup/metadata",ficheiro,0);
+    while(fgets(linha,20,0)!=NULL){
+          if(strcmp(linha,ficheiro)==0) return 1;
+    }*/
+    // escrever para 0 ler de 1
+
+    if(x=fork()==0){
+      close(fd[0]);
+      while(read(fd[1],slink,20)!=NULL){
+        readlink(slink,templinha,tlinha);
+        linha=strndup(templinha,tlinha);
+        printf("%s\n",linha);
+        if(strcmp(linha,ficheiro)==0) return 1;
+      }
+      return 0;
+    }else{
+        close(fd[1]);
+        dup2(fd[0],1);
+        execlp("find","find","home/user/.Backup/metadata",ficheiro,0);
+
+    }
+
 
 }
 
