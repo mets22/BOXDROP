@@ -23,7 +23,7 @@ int existeFicheiro(char *ficheiro)
 
     if(x=fork()==0){
       close(fd[0]);
-      while(read(fd[1],slink,20)!=NULL){
+      while(read(fd[1],slink,20)!=0){
         readlink(slink,templinha,tlinha);
         linha=strndup(templinha,tlinha);
         printf("%s\n",linha);
@@ -32,13 +32,12 @@ int existeFicheiro(char *ficheiro)
       return 0;
     }else{
         close(fd[1]);
-        dup2(fd[0],1);
-        execlp("find","find","home/user/.Backup/metadata",ficheiro,0);
+        dup2(1,fd[0]);
+        execlp("find","find","-L","/home/goncalo/Documentos","-xtype","l",0);
 
     }
-
-
 }
+
 
 void backupficheiro(char *ficheiro, char *shaisum, int pid)
 {
