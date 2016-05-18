@@ -1,16 +1,16 @@
 #include "client.h"
 #include "local.h"
 
-void main(int argc, char const *argv[]) {
+int main(int argc, char const *argv[]) {
 
     int publicfifo, privatefifo, i;
     static char buffer[PIPE_BUF];
-    char * string; // o que vai ser envidado para o servidor
+    char *string = (char*)calloc(B_SIZE,sizeof(char));
     struct message msg;
 
 /*Using sprintf to create a unique fifo name
 and save into message structure*/
-    sprintf(msg.fifo_name, "/home/mets/.Backup/");
+    sprintf(msg.fifo_name, "/home/nfernandes/.Backup/fifo");
     msg.pid = getpid();
 
 /*Creating the PRIVATE fifo*/
@@ -28,14 +28,17 @@ and save into message structure*/
 
     // Junta todos os argumentos numa so string
 
-    for(i=0; i<argc; i++){
+    for(i=1; i<argc-1; i++){
         strcat(string,argv[i]);
         strcat(string," ");
     }
+    strcat(string,argv[i]);
+
+    strcpy(msg.cmd_line,string);
 
     // escreve para o servidor
 
-    write(publicfifo,string,sizeof(string));
+    write(publicfifo,&msg,sizeof(msg));
 
     /*while(1) {
 
@@ -60,11 +63,12 @@ and save into message structure*/
         while((n = read(privatefifo, buffer, PIPE_BUF)) > 0) {
             write(fileno(stderr), buffer, n);
         }*/
-
+        free(string);
+        unlink("/home/nfernandes/.Backup/fifo");
         close(privatefifo);
     //}
     close(publicfifo);
-
+    return 0;
     /*CLEANUP:
     close(publicfifo);
     unlink(msg.fifo_name);*/
