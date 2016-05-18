@@ -5,6 +5,10 @@
 #include "server.h"
 #include "local.h"
 
+const char *metadata = "/.Backup/metadata";
+const char *data = "/.Backup/data";
+char *user;
+
 int existeFicheiro(char *ficheiro)
 {
     int fd[2],fd2[2],x,temp,i,tlinha;
@@ -36,12 +40,22 @@ int existeFicheiro(char *ficheiro)
 
 }
 
-void backupficheiro(char *ficheiro)
+void backupficheiro(char *ficheiro, char *shaisum, int pid)
 {
-    char aux[128];
+    char aux[128], newfile[512],location[128],linklocation[128];
+
+    strcpy(newfile,user);
+    strcat(newfile,data);
+    strcat(newfile,shaisum);
+    strcpy(linklocation,metadata);
+    execlp("cp","cp", ficheiro, newfile,NULL);
     c=strtok(ficheiro,".");
     strcpy(aux,ficheiro);
-    execlp("cp","cp", aux, ,NULL);
+    strcat(linklocation,aux);
+    execlp("touch","touch",linklocation,NULL);
+    execlp("ln","ln",newfile,linklocation,NULL);
+    execlp("rm","rm",ficheiro,NULL);
+    execlp("kill","kill", "SIGCONT", atoi(pid), NULL);
 }
 
 void restoreficheiro(char *ficheiro)
@@ -56,8 +70,8 @@ int main()
     struct message msg;
     FILE *fin;
     static char buffer[PIPE_BUF];
-    char comando[10], ficheiro[128], *c, metadata[161];
-    const char *metadata =
+    char comando[10], ficheiro[128], *c, shaisum[161];
+    strcpy(user,getenv("HOME"));
 /*creating the PUBLIC fifo*/
     mkfifo(PUBLIC,0666);
 
@@ -119,7 +133,7 @@ the public FIFO every time a client process finishes its activities.
         }
         else {
             close(fd[1]);
-            read(fd[0],&metadata,160);
+            read(fd[0],&shaisum,160);
             while(read(fd[0],&c,1)>0) ficheiro++=*c;
             switch (comando) {
                 case "backup" :;
