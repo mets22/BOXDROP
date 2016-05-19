@@ -46,35 +46,35 @@ int existeFicheiro(char *ficheiro)
 void backupficheiro(char *ficheiro, char *shaisum, int pid)
 {
     int status,pidp[4],i=0;
-    char aux[128], newfile[512],location[128],linklocation[128],*c;
+    char aux[128], newfile[512],linklocation[128],*c;
 
     printf("backupficheiro\n");
     strcpy(newfile, user);
     strcat(newfile, data);
-    strcat(newfile, shaisum);
-    strcpy(linklocation, metadata);
+    strcpy(linklocation, user);
+    strcat(linklocation, metadata);
     strcpy(aux, ficheiro);
     strcat(aux,".gz");
-    printf("%s\n",aux);
+    printf("back ");
+    c=strtok(shaisum,"\n");
+    c=strtok(NULL,"\n");
+    strcat(newfile, c);
+    printf("%s\n",c);
     strcat(linklocation, aux);
 
     if(pidp[i++]=fork()==0) {
         execlp("cp", "cp", aux, newfile, NULL);
     }
-    else waitpid(pidp[0],&status,0);
+    else {
+        waitpid(pidp[0], &status, 0);
 
-    if(pidp[i++]=fork()==0) {
-        execlp("touch", "touch", aux, NULL);
-    }
-    else waitpid(pidp[1],&status,0);
-
-    if(pidp[i++]=fork()==0) {
-        execlp("ln", "ln", newfile, linklocation, NULL);
-    }
-
-    else{
-        waitpid(pidp[2],&status,0);
-        kill(pid,SIGCONT);
+        if (pidp[i++] = fork() == 0) {
+            execlp("ln", "ln", newfile, linklocation, NULL);
+        }
+        else{
+            waitpid(pidp[1],&status,0);
+            kill(pid,SIGCONT);
+        }
     }
 }
 
