@@ -7,7 +7,7 @@
 
 const char *metadata = "/.Backup/metadata";
 const char *data = "/.Backup/data";
-char *user;
+char user[64];
 
 
 
@@ -44,38 +44,58 @@ int existeFicheiro(char *ficheiro)
 
 void backupficheiro(char *ficheiro, char *shaisum, int pid)
 {
-    char aux[128], newfile[512],location[128],linklocation[128];
+    int status;
+    char aux[128], newfile[512],location[128],linklocation[128],*c;
 
-    strcpy(newfile,user);
-    strcat(newfile,data);
-    strcat(newfile,shaisum);
-    strcpy(linklocation,metadata);
-    execlp("cp","cp", ficheiro, newfile,NULL);
-    c=strtok(ficheiro,".");
-    strcpy(aux,ficheiro);
-    strcat(linklocation,aux);
-    execlp("touch","touch",linklocation,NULL);
-    execlp("ln","ln",newfile,linklocation,NULL);
-    execlp("rm","rm",ficheiro,NULL);
-    execlp("kill","kill", "SIGCONT", atoi(pid), NULL);
+    strcpy(newfile, user);
+    strcat(newfile, data);
+    strcat(newfile, shaisum);
+    strcpy(linklocation, metadata);
+    c = strtok(ficheiro, ".");
+    strcpy(aux, ficheiro);
+    strcat(linklocation, aux);
+
+    if(fork()==0) {
+        execlp("cp", "cp", ficheiro, newfile, NULL);
+    }
+    else if(fork()==0) {
+        execlp("touch", "touch", linklocation, NULL);
+    }
+    else if(fork()==0) {
+        execlp("ln", "ln", newfile, linklocation, NULL);
+    }
+    else if(fork()==0) {
+        execlp("rm", "rm", ficheiro, NULL);
+    }
+    else{
+        waitpid(-1,&status,0);
+        kill(pid,SIGCONT);
+    }
 }
 
-void restoreficheiro(char *ficheiro)
+/*void restoreficheiro(char *ficheiro)
 {
+
     execlp("cp","cp", ,ficheiro, NULL);
-}
+}*/
 
 int main()
 {
 
-    int privatefifo, dummyfifo, publicfifo, n, fd[2], pid,status;
+    int privatefifo, dummyfifo, publicfifo, n, fd[2], pid,status,i=0;
     struct message msg;
     FILE *fin;
     static char buffer[PIPE_BUF];
-    char comando[10], ficheiro[128], *c, shaisum[161];
+    char comando[10], ficheiro[128], *c, shaisum[161], fifo[128];
+    printf("AOK!\n");
     strcpy(user,getenv("HOME"));
+    strcpy(fifo,user);
+    strcat(fifo,"/.Backup/");
+    mkdir(fifo,0777);
+    
+    strcat(fifo,PUBLIC);
 /*creating the PUBLIC fifo*/
-    mkfifo(PUBLIC,0666);
+    printf("%d\n",mkfifo(fifo,0666));
 
 /*
 Server process opens the PUBLIC fifo in write mode to make sure that
@@ -85,13 +105,13 @@ will block any empty PUBLIC fifo waiting for additional messages to
 be written. This technique saves us from having to close and reopen
 the public FIFO every time a client process finishes its activities.
 */
-
-    if( (publicfifo = open(PUBLIC, O_RDONLY)) < 0 ||
-        (dummyfifo = open(PUBLIC, O_WRONLY | O_NDELAY)) < 0) {
-        perror(PUBLIC);
+    printf("MORETHANOK!\n");
+    if( (publicfifo = open(fifo, O_RDONLY)) < 0 ||
+        (dummyfifo = open(fifo, O_WRONLY | O_NDELAY)) < 0) {
+        perror(fifo);
         exit(1);
     }
-
+    printf("lol\n");
 /*Read the message from PUBLIC fifo*/
     while(read(publicfifo, &msg, sizeof(msg)) > 0) {
         n++;
@@ -100,51 +120,46 @@ the public FIFO every time a client process finishes its activities.
             n--;
         }
         pipe(fd);
-        pid = fork();
         c=strtok(msg.cmd_line," ");
         strcpy(comando,msg.cmd_line);
-
-        if(pid == 0) {
+        printf("comando: %s\n",comando);
+        printf("ciclo\n");
+        if((pid = fork()) == 0) {
             c=strtok(NULL, " ");
-            strcpy(ficheiro,msg.cmd_line);
-
-            if ((privatefifo = open(msg.fifo_name, O_WRONLY | O_NDELAY)) == -1) {
-                sleep(5);
+            strcpy(ficheiro,c);
+            if (privatefifo = open(msg.fifo_name, O_WRONLY | O_NDELAY) == -1) {
+                printf("%d\n", privatefifo);
+                perror(msg.fifo_name);
+                exit(1);
             }
             else {
-                /*fin = popen(msg.cmd_line, "r");
-                write(privatefifo, "\n", 1);
-
-                while ((n = read(fileno(fin), buffer, PIPE_BUF)) > 0) {
-                    write(privatefifo, buffer, n);
-                    memset(buffer, 0x0, PIPE_BUF);
-                }
-
-                pclose(fin);
-                close(privatefifo);
-                done = 1;*/
+                printf("else\n");
 
                 dup2(fd[1],1);
                 close(fd[0]);
-                close(fd[1]);
-                execlp("gzip","gzip",ficheiro,NULL);
-                strcat(ficheiro, ".gz");
-                execlp("sha1sum","sha1sum", ficheiro, NULL);
-                exit(3);
+                printf("gzip\n");
+                if(fork()==0) execlp("gzip","gzip",ficheiro,NULL);
+                else {
+                    waitpid(0,&status,0);
+                    strcat(ficheiro, ".gz");
+                    execlp("sha1sum", "sha1sum", ficheiro, NULL);
+                }
             }
         }
         else {
+            waitpid(-1,&status,0);
+            printf("pai\n");
             close(fd[1]);
             read(fd[0],&shaisum,160);
-            while(read(fd[0],&c,1)>0) ficheiro++=*c;
-            switch (comando) {
-                case "backup" :;
-                    break;
-                case "restore" :;
-                    break;
-            }
+            c = strtok(shaisum," ");
+            strcpy(shaisum,c);
+            printf("%s\n",shaisum);
+            while(read(fd[0],&c,1)>0) {ficheiro[i]=*c;i++;}
+            if(strcmp(comando,"backup")){backupficheiro(ficheiro,shaisum,msg.pid);}
+            else exit(3);
         }
 
     }
+    unlink(fifo);
     return 0;
 }

@@ -6,11 +6,16 @@ int main(int argc, char const *argv[]) {
     int publicfifo, privatefifo, i;
     static char buffer[PIPE_BUF];
     char *string = (char*)calloc(B_SIZE,sizeof(char));
+    char fifo[128], user[64];
     struct message msg;
 
+    strcpy(user,getenv("HOME"));
+    strcpy(fifo,user);
+    strcat(fifo,"/.Backup/");
+    strcat(fifo,PUBLIC);
 /*Using sprintf to create a unique fifo name
 and save into message structure*/
-    sprintf(msg.fifo_name, "/home/nfernandes/.Backup/fifo");
+    sprintf(msg.fifo_name, "/home/mets/.Backup/fifo%d", getpid());
     msg.pid = getpid();
 
 /*Creating the PRIVATE fifo*/
@@ -20,7 +25,7 @@ and save into message structure*/
     }
 
 /*Opening PUBLIC fifo in WRITE ONLY mode*/
-    if((publicfifo = open(PUBLIC,O_WRONLY)) < 0) {
+    if((publicfifo = open(fifo,O_WRONLY)) < 0) {
         unlink(msg.fifo_name);
         perror(PUBLIC);
         exit(1);
@@ -37,9 +42,13 @@ and save into message structure*/
     strcpy(msg.cmd_line,string);
 
     // escreve para o servidor
-
     write(publicfifo,&msg,sizeof(msg));
-
+    if(privatefifo = open(msg.fifo_name,O_RDONLY)){
+        unlink(msg.fifo_name);
+        perror(PUBLIC);
+        exit(1);
+    }
+    pause();
     /*while(1) {
 
         if(argc>=3){
@@ -64,7 +73,7 @@ and save into message structure*/
             write(fileno(stderr), buffer, n);
         }*/
         free(string);
-        unlink("/home/nfernandes/.Backup/fifo");
+        unlink(msg.fifo_name);
         close(privatefifo);
     //}
     close(publicfifo);
