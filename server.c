@@ -33,7 +33,7 @@ int existeFicheiro(char *ficheiro)
     }else{
         close(fd[1]);
         dup2(1,fd[0]);
-        execlp("find","find","-L","/home/goncalo/Documentos","-xtype","l",0);
+        execlp("find","find","-L","/home/goncalo/Documentos","-xtype","l","-printf","%f",0);
 
     }
 }
