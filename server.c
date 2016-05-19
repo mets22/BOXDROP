@@ -11,8 +11,33 @@ char user[64];
 
 int existeFicheiro(char *ficheiro)
 {
+    int fd[2],fd2[2],x,temp,i,tlinha;
+    char* slink,templinha,linha;
+    pipe(fd);
 
+    /*execlp("find","find","home/user/.Backup/metadata",ficheiro,0);
+    while(fgets(linha,20,0)!=NULL){
+          if(strcmp(linha,ficheiro)==0) return 1;
+    }*/
+    // escrever para 0 ler de 1
+
+    if(x=fork()==0){
+      close(fd[0]);
+      while(read(fd[1],slink,20)!=0){
+        readlink(slink,templinha,tlinha);
+        linha=strndup(templinha,tlinha);
+        printf("%s\n",linha);
+        if(strcmp(linha,ficheiro)==0) return 1;
+      }
+      return 0;
+    }else{
+        close(fd[1]);
+        dup2(1,fd[0]);
+        execlp("find","find","-L","/home/goncalo/Documentos","-xtype","l","-printf","%f",0);
+
+    }
 }
+
 
 void backupficheiro(char *ficheiro, char *shaisum, int pid)
 {
