@@ -64,8 +64,8 @@ void backupfile(char *file, char *shaisum)
 
 void restorefile(char *file)
 {
-    char *dat, *meta, actual[200];
-    int x,status,i=0;
+    char *dat, *meta, actual[200], shaisum[160],*c;
+    int x,status,i=0, fd[2];
     pid_t pid1,pid2;
     int error;
     char *nameoffile = (char *) malloc(sizeof(char)*128);
@@ -73,38 +73,55 @@ void restorefile(char *file)
     dat =(char *) malloc(sizeof(char)*128);
     //vai buscar a pasta da metadata
     meta=getPathOfMetadataFolder();
-    //vai buscar directoria actual
-    getcwd(actual,sizeof(actual));
-    strcat(nameoffile, actual);
-    strcat(nameoffile,"/");
-    strcat(nameoffile,file);
-    strcat(nameoffile,".gz");
-    strcat(meta,file);
+    strcpy(dat,getPathOfDataFolder());
+    pipe(fd);
+    if(fork()==0) {
+        close(fd[0]);
+        dup2(fd[1], 1);
+        execlp("sha1sum","sha1sum",file,NULL);
+    }
+    else {
+        close(fd[1]);
+        read(fd[0], &shaisum, 160);
+        c=strtok(shaisum," ");
+        strcat(dat,c);
+        //vai buscar directoria actual
+        getcwd(actual, sizeof(actual));
+        strcat(nameoffile, actual);
+        strcat(nameoffile, "/");
+        strcat(nameoffile, file);
+        strcat(nameoffile, ".gz");
+        strcat(meta, file);
 
-    //vai buscar directoria para onde aponta o atalho
-    x=readlink(meta,dat,128);
-
-    if(pid1=fork()==0) {
-        execlp("cp","cp",dat,nameoffile, NULL);
-        fprintf(stderr, "Erro ao copiar ficheiros\n");
-    }else {
-        wait(NULL);
-        if (pid2=fork()==0) {
-            execlp("gzip","gzip","-d",nameoffile,0);
-            fprintf(stderr, "Erro ao extrair ficheiro\n");
+        //vai buscar directoria para onde aponta o atalho
+        printf("meta:%s\ndat: %s\n", meta, dat);
+        x = readlink(meta, dat, 128);
+        c=strtok(nameoffile,"\n");
+        strcpy(nameoffile,c);
+        if (pid1 = fork() == 0) {
+            execlp("cp", "cp", dat, nameoffile, NULL);
         }
-        else{
-            wait(NULL);
+        else {
+            waitpid(pid1, &status, 0);
+
+            if (pid2 = fork() == 0) {
+                execlp("gunzip", "gunzip", "-d", nameoffile, 0);
+                fprintf(stderr, "Erro ao extrair ficheiro\n");
+            }
+            else {
+                waitpid(pid2, &status, 0);
+                exit(3);
+            }
         }
     }
 }
 
 int main()
 {
-    int privatefifo, dummyfifo, publicfifo, n, fd[2], pid[5],status,i=0;
+    int privatefifo, dummyfifo, publicfifo, n, fd[2], pid,status,i=0;
     struct message msg;
     static char buffer[PIPE_BUF];
-    char comando[10], ficheiro[128], *c,*ch, shaisum[161];
+    char comando[10], ficheiro[128], *c,*ch, shaisum[160];
     char * fifo;
 
     createBackupFolders();
@@ -129,6 +146,7 @@ int main()
     }
     /*Read the message from PUBLIC fifo*/
     while(read(publicfifo, &msg, sizeof(msg)) > 0) {
+        printf("MENSAGEM!\n");
         pipe(fd);
         ch=strtok(msg.cmd_line," ");
         strcpy(comando,ch);
@@ -161,19 +179,14 @@ int main()
                     }
                 }
                 else {
-                    waitpid(0, &status, 0);
-                    printf("pai\n");
+                    waitpid(-1, &status, 0);
                     close(fd[1]);
-                    while(read(fd[0], &shaisum, 160)>0) {
-                        c = strtok(shaisum, " ");
-                        strcpy(shaisum, c);
-                        //c = strtok(NULL, "\n");
-                        printf("%s\n", shaisum);
-                        printf("%s\n", ficheiro);
-                        i++;
-                        printf("I: %d\n", i);
-                        if (fork() == 0) backupfile(ficheiro, shaisum);
-                    }
+                    read(fd[0], &shaisum, 160);
+                    c = strtok(shaisum, " ");
+                    strcpy(shaisum, c);
+                    c = strtok(NULL, "\n");
+                    if (fork() == 0) backupfile(ficheiro, shaisum);
+                    else waitpid(-1,&status,0);
                 }
             }
         }
@@ -186,8 +199,9 @@ int main()
                   waitpid(0, &status, 0);
                   n--;
               }
-            }
-            restorefile(ficheiro);
+              if(fork()==0) restorefile(ficheiro);
+              else waitpid(-1,&status,0);
+          }
         }
         kill(msg.pid, SIGCONT);
     }
