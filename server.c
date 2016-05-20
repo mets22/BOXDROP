@@ -1,16 +1,12 @@
 #include "server.h"
 
 
-const char *metadata = "/.Backup/metadata/";
-const char *data = "/.Backup/data/";
-char user[64];
-
-
 
 int existeFicheiro(char *ficheiro)
 {
     int fd[2],x,temp,i,tlinha;
     char* slink,*templinha,*linha;
+    char *pathofbackup = getPathOfBackupFolder();
     pipe(fd);
 
 
@@ -26,7 +22,7 @@ int existeFicheiro(char *ficheiro)
     }else{
         close(fd[0]);
         dup2(fd[1],0);
-        execlp("find","find","-L","/home/nfernandes/.Backup/","-xtype","l","-printf","%f",0);
+        execlp("find","find","-L",pathofbackup,"-xtype","l","-printf","%f",0);
         fprintf(stderr, "Erro na procura de ficheiros\n");
         exit(EXIT_FAILURE);
     }
@@ -35,25 +31,14 @@ int existeFicheiro(char *ficheiro)
 void backupficheiro(char *ficheiro, char *shaisum)
 {
     int status,pidp[4],i=0;
-    char aux[128], newfile[512],linklocation[128],*c;
-
-
-    printf("backupficheiro\n");
-    strcpy(newfile, user);
-    strcat(newfile, data);
-    printf("backup - %s\n", newfile);
-    strcpy(linklocation, user);
-    strcat(linklocation, metadata);
-    printf("backup - %s\n", linklocation);
+    char aux[128],*c;
+    char * newfile = getPathOfDataFolder();
+    char * linklocation = getPathOfMetadataFolder();
     strcpy(aux, ficheiro);
-    printf("backup - %s\n", aux);
     strcat(linklocation, aux);
     strcat(aux,".gz");
-    printf("backup - %s\n", aux);
     c=strtok(shaisum,"\n");
-    printf("backup - %s\n", c);
     strcat(newfile, c);
-    printf("backup - %s\n", newfile);
 
 
     if(pidp[i++]=fork()==0) {
@@ -92,13 +77,11 @@ void restoreficheiro(char *ficheiro)
     x=readlink(meta,dat,128);
 
     if(pid1=fork()==0) {
-        printf("copiar\n");
         execlp("cp","cp",dat,actual, NULL);
         fprintf(stderr, "Erro ao copiar ficheiros\n");
     }else {
         waitpid(pid1,&status,0);
         if (pid2=fork()==0) {
-            printf("unzipar\n");
             execlp("gunzip","gunzip",ficheiro,0);
             fprintf(stderr, "Erro ao extrair ficheiro\n");
         }
@@ -110,18 +93,14 @@ void restoreficheiro(char *ficheiro)
 
 int main()
 {
-
     int privatefifo, dummyfifo, publicfifo, n, fd[2], pid[5],status,i=0;
     struct message msg;
-    FILE *fin;
     static char buffer[PIPE_BUF];
-    char comando[10], ficheiro[128], *c,*ch, shaisum[161], fifo[128];
+    char comando[10], ficheiro[128], *c,*ch, shaisum[161];
+    char * fifo;
 
     createBackupFolders();
-    strcpy(user,getenv("HOME"));
-    strcpy(fifo,user);
-    strcat(fifo,"/.Backup/");
-
+    fifo = getPathOfBackupFolder();
     strcat(fifo,PUBLIC);
     /*creating the PUBLIC fifo*/
     printf("%d\n",mkfifo(fifo,0666));
@@ -174,7 +153,7 @@ int main()
                         if (fork() == 0) execlp("sha1sum", "sha1sum", ficheiro, NULL);
                         else {
                             wait(&status);
-                            execlp("gzip", "gzip", ficheiro, NULL);
+                            execlp("gzip", "gzip", "-k", ficheiro, NULL);
                         }
                     }
                 }
