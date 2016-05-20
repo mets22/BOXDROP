@@ -28,27 +28,32 @@ int existeFicheiro(char *ficheiro)
     }
 }
 
-void backupficheiro(char *ficheiro, char *shaisum)
+void backupfile(char *file, char *shaisum)
 {
     int status,pidp[4],i=0;
     char aux[128],*c;
     char * newfile = getPathOfDataFolder();
     char * linklocation = getPathOfMetadataFolder();
-    strcpy(aux, ficheiro);
+    strcpy(aux, file);
     strcat(linklocation, aux);
     strcat(aux,".gz");
     c=strtok(shaisum,"\n");
     strcat(newfile, c);
+    strcat(newfile,".gz");
 
 
     if(pidp[i++]=fork()==0) {
         execlp("mv", "mv", aux, newfile, NULL);
+        fprintf(stderr, "Erro na transferência de ficheiro\n");
+        exit(EXIT_FAILURE);
     }
     else {
         waitpid(pidp[0], &status, 0);
 
         if (pidp[i++] = fork() == 0) {
             execlp("ln", "ln", "-s", newfile, linklocation, NULL);
+            fprintf(stderr, "Erro na criação de link\n");
+            exit(EXIT_FAILURE);
         }
         else{
             waitpid(pidp[1],&status,0);
@@ -57,36 +62,39 @@ void backupficheiro(char *ficheiro, char *shaisum)
     }
 }
 
-void restoreficheiro(char *ficheiro)
+void restorefile(char *file)
 {
     char *dat, *meta, actual[200];
     int x,status,i=0;
     pid_t pid1,pid2;
     int error;
-    char *nameoffile;
+    char *nameoffile = (char *) malloc(sizeof(char)*128);
 
     dat =(char *) malloc(sizeof(char)*128);
     //vai buscar a pasta da metadata
     meta=getPathOfMetadataFolder();
     //vai buscar directoria actual
     getcwd(actual,sizeof(actual));
-
-    strcat(meta,ficheiro);
+    strcat(nameoffile, actual);
+    strcat(nameoffile,"/");
+    strcat(nameoffile,file);
+    strcat(nameoffile,".gz");
+    strcat(meta,file);
 
     //vai buscar directoria para onde aponta o atalho
     x=readlink(meta,dat,128);
 
     if(pid1=fork()==0) {
-        execlp("cp","cp",dat,actual, NULL);
+        execlp("cp","cp",dat,nameoffile, NULL);
         fprintf(stderr, "Erro ao copiar ficheiros\n");
     }else {
-        waitpid(pid1,&status,0);
+        wait(NULL);
         if (pid2=fork()==0) {
-            execlp("gunzip","gunzip",ficheiro,0);
+            execlp("gzip","gzip","-d",nameoffile,0);
             fprintf(stderr, "Erro ao extrair ficheiro\n");
         }
         else{
-            waitpid(pid2,&status,0);
+            wait(NULL);
         }
     }
 }
@@ -114,16 +122,13 @@ int main()
     the public FIFO every time a client process finishes its activities.
     */
 
-    printf("MORETHANOK!\n");
     if( (publicfifo = open(fifo, O_RDONLY)) < 0 ||
         (dummyfifo = open(fifo, O_WRONLY | O_NDELAY)) < 0) {
         perror(fifo);
         exit(1);
     }
-    printf("lol\n");
     /*Read the message from PUBLIC fifo*/
     while(read(publicfifo, &msg, sizeof(msg)) > 0) {
-        printf("MSG: %s\n", msg.cmd_line);
         pipe(fd);
         ch=strtok(msg.cmd_line," ");
         strcpy(comando,ch);
@@ -146,8 +151,6 @@ int main()
                         exit(1);
                     }
                     else {
-                        printf("else\n");
-
                         dup2(fd[1], 1);
                         close(fd[0]);
                         if (fork() == 0) execlp("sha1sum", "sha1sum", ficheiro, NULL);
@@ -169,11 +172,9 @@ int main()
                         printf("%s\n", ficheiro);
                         i++;
                         printf("I: %d\n", i);
-                        if (fork() == 0) backupficheiro(ficheiro, shaisum);
+                        if (fork() == 0) backupfile(ficheiro, shaisum);
                     }
                 }
-
-                printf("C: %s\n", c);
             }
         }
         else if(strcmp(comando, "restore") == 0)
@@ -186,7 +187,7 @@ int main()
                   n--;
               }
             }
-            restoreficheiro(ficheiro);
+            restorefile(ficheiro);
         }
         kill(msg.pid, SIGCONT);
     }
