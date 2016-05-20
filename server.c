@@ -85,16 +85,21 @@ void restoreficheiro(char *ficheiro)
 {
     char *dat, *meta, actual[200];
     int x,status,pid[4],i=0;
+    int error;
+    //vai buscar a pasta da metadata
     meta=getPathOfMetadataFolder();
-
+    //vai buscar directoria actual
     getcwd(actual,sizeof(actual));
 
     strcat(meta,ficheiro);
 
     printf("actual: %s\n",actual );
     printf("meta: %s\n",meta );
-
-    x=readlink(meta,dat,128);
+    //vai buscar directoria para onde aponta o atalho
+    x=readlink("/home/goncalo/.Backup/metadata/a.txt",dat,128);
+    error = errno;
+    printf("%d\n", errno);
+    printf("%d\n",x );
     printf("dat: %s\n",dat );
 
 
@@ -107,7 +112,7 @@ void restoreficheiro(char *ficheiro)
 
         if (pid[i++]=fork()==0) {
           printf("unzipar\n");
-          execlp("gunzip","gunzip",ficheiro);
+          execlp("gunzip","gunzip",ficheiro,0);
         }
           else{
             waitpid(pid[1],&status,0);
@@ -196,7 +201,15 @@ the public FIFO every time a client process finishes its activities.
         }
         else if(strcmp(comando, "restore") == 0)
         {
-
+          while (c = strtok(NULL, " ")) {
+              n++;
+              strcpy(ficheiro, c);
+              if (n > 5) {
+                  waitpid(0, &status, 0);
+                  n--;
+              }
+            }
+            restoreficheiro(ficheiro);
         }
     }
     unlink(fifo);

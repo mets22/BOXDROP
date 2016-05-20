@@ -15,7 +15,7 @@ int main(int argc, char const *argv[]) {
     strcat(fifo,PUBLIC);
 /*Using sprintf to create a unique fifo name
 and save into message structure*/
-    sprintf(msg.fifo_name, "/home/mets/.Backup/fifo%d", getpid());
+    sprintf(msg.fifo_name, "/home/goncalo/.Backup/fifo%d", getpid());
     msg.pid = getpid();
 
 /*Creating the PRIVATE fifo*/
