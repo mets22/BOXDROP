@@ -97,7 +97,7 @@ void restoreficheiro(char *ficheiro)
     printf("actual: %s\n",actual );
     printf("meta: %s\n",meta );
     //vai buscar directoria para onde aponta o atalho
-    x=readlink("/home/goncalo/.Backup/metadata/a.txt",dat,128);/*Este gajo é um camelo*/
+    //x=readlink("/home/goncalo/.Backup/metadata/a.txt",dat,128);/*Este gajo é um camelo*/
     error = errno;
     printf("%d\n", errno);
     printf("%d\n",x );
