@@ -77,6 +77,7 @@ void backupficheiro(char *ficheiro, char *shaisum)
         }
         else{
             waitpid(pidp[1],&status,0);
+            exit(3);
         }
     }
 }
@@ -106,11 +107,11 @@ void restoreficheiro(char *ficheiro)
 int main()
 {
 
-    int privatefifo, dummyfifo, publicfifo, n, fd[2], pid,status,i=0;
+    int privatefifo, dummyfifo, publicfifo, n, fd[2], pid[5],status,i=0;
     struct message msg;
     FILE *fin;
     static char buffer[PIPE_BUF];
-    char comando[10], ficheiro[128], *c, shaisum[161], fifo[128];
+    char comando[10], ficheiro[128], *c,*ch, shaisum[161], fifo[128];
     printf("AOK!\n");
     createBackupFolders();
     strcpy(user,getenv("HOME"));
@@ -140,17 +141,21 @@ the public FIFO every time a client process finishes its activities.
     while(read(publicfifo, &msg, sizeof(msg)) > 0) {
         printf("MSG: %s\n", msg.cmd_line);
         pipe(fd);
-        c=strtok(msg.cmd_line," ");
-        strcpy(comando,msg.cmd_line);
+        ch=strtok(msg.cmd_line," ");
+        strcpy(comando,ch);
+        if (n > 5) {
+            waitpid(0, &status, 0);
+            n--;
+        }
         if (strcmp(comando, "backup") == 0) {
-            while (c = strtok(NULL, " ")) {
+            while(ch = strtok(NULL, " ")) {
                 n++;
-                strcpy(ficheiro, c);
+                strcpy(ficheiro, ch);
                 if (n > 5) {
                     waitpid(0, &status, 0);
                     n--;
                 }
-                if ((pid = fork()) == 0) {
+                if ((pid[i] = fork()) == 0) {
                     if (privatefifo = open(msg.fifo_name, O_WRONLY | O_NDELAY) == -1) {
                         printf("%d\n", privatefifo);
                         perror(msg.fifo_name);
@@ -169,22 +174,24 @@ the public FIFO every time a client process finishes its activities.
                     }
                 }
                 else {
-                    waitpid(-1, &status, 0);
+                    waitpid(0, &status, 0);
                     printf("pai\n");
                     close(fd[1]);
-                    read(fd[0], &shaisum, 160);
+                    read(fd[0], &shaisum, 160); /*ESTE READ CARALHO!*/
                     c = strtok(shaisum, " ");
                     strcpy(shaisum, c);
                     printf("%s\n", shaisum);
                     printf("%s\n", ficheiro);
-                    backupficheiro(ficheiro, shaisum);
+                    if(fork()==0) backupficheiro(ficheiro, shaisum);
                 }
+
+                printf("C: %s\n", c);
             }
             kill(msg.pid, SIGCONT);
         }
         else if(strcmp(comando, "restore") == 0)
         {
-            
+
         }
     }
     unlink(fifo);
