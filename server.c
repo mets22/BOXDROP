@@ -97,7 +97,7 @@ void restoreficheiro(char *ficheiro)
     printf("actual: %s\n",actual );
     printf("meta: %s\n",meta );
     //vai buscar directoria para onde aponta o atalho
-    x=readlink("/home/goncalo/.Backup/metadata/a.txt",dat,128);
+    x=readlink("/home/goncalo/.Backup/metadata/a.txt",dat,128);/*Este gajo é um camelo*/
     error = errno;
     printf("%d\n", errno);
     printf("%d\n",x );
@@ -185,7 +185,7 @@ the public FIFO every time a client process finishes its activities.
                         close(fd[0]);
                         if (fork() == 0) execlp("sha1sum", "sha1sum", ficheiro, NULL);
                         else {
-                            waitpid(-1, &status, 0);
+                            wait(&status);
                             execlp("gzip", "gzip", ficheiro, NULL);
                         }
                     }
@@ -197,6 +197,7 @@ the public FIFO every time a client process finishes its activities.
                     read(fd[0], &shaisum, 160); /*ESTE READ CARALHO!*/
                     c = strtok(shaisum, " ");
                     strcpy(shaisum, c);
+                    c=strtok(NULL,"\n");
                     printf("%s\n", shaisum);
                     printf("%s\n", ficheiro);
                     if(fork()==0) backupficheiro(ficheiro, shaisum);
@@ -208,9 +209,6 @@ the public FIFO every time a client process finishes its activities.
         }
         else if(strcmp(comando, "restore") == 0)
         {
-<<<<<<< HEAD
-
-=======
           while (c = strtok(NULL, " ")) {
               n++;
               strcpy(ficheiro, c);
@@ -220,7 +218,6 @@ the public FIFO every time a client process finishes its activities.
               }
             }
             restoreficheiro(ficheiro);
->>>>>>> 9f80dafd3fb5c670fb0d0d216dee828dee09a9d8
         }
     }
     unlink(fifo);
