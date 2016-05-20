@@ -51,16 +51,19 @@ void backupficheiro(char *ficheiro, char *shaisum)
     printf("backupficheiro\n");
     strcpy(newfile, user);
     strcat(newfile, data);
+    printf("backup - %s\n", newfile);
     strcpy(linklocation, user);
     strcat(linklocation, metadata);
+    printf("backup - %s\n", linklocation);
     strcpy(aux, ficheiro);
+    printf("backup - %s\n", aux);
     strcat(linklocation, aux);
     strcat(aux,".gz");
-    printf("back ");
+    printf("backup - %s\n", aux);
     c=strtok(shaisum,"\n");
-    c=strtok(NULL,"\n");
+    printf("backup - %s\n", c);
     strcat(newfile, c);
-    printf("%s\n",c);
+    printf("backup - %s\n", newfile);
 
 
     if(pidp[i++]=fork()==0) {
@@ -119,52 +122,50 @@ the public FIFO every time a client process finishes its activities.
     printf("lol\n");
 /*Read the message from PUBLIC fifo*/
     while(read(publicfifo, &msg, sizeof(msg)) > 0) {
+        printf("MSG: %s\n", msg.cmd_line);
         pipe(fd);
         c=strtok(msg.cmd_line," ");
         strcpy(comando,msg.cmd_line);
-        printf("comando: %s\n",comando);
-        printf("C: %s\n",c);
-        while(c=strtok(NULL," ")) {
-            strcpy(ficheiro,c);
-            n++;
-            if(n>5){
-                waitpid(0,&status,0);
-                n--;
-            }
-            if ((pid = fork()) == 0) {
-                if (privatefifo = open(msg.fifo_name, O_WRONLY | O_NDELAY) == -1) {
-                    printf("%d\n", privatefifo);
-                    perror(msg.fifo_name);
-                    exit(1);
+        if (strcmp(comando, "backup") == 0) {
+            while (c = strtok(NULL, " ")) {
+                n++;
+                strcpy(ficheiro, c);
+                if (n > 5) {
+                    waitpid(0, &status, 0);
+                    n--;
                 }
-                else {
-                    printf("else\n");
-
-                    dup2(fd[1], 1);
-                    close(fd[0]);
-                    printf("gzip\n");
-                    if (fork() == 0) execlp("sha1sum", "sha1sum", ficheiro, NULL);
+                if ((pid = fork()) == 0) {
+                    if (privatefifo = open(msg.fifo_name, O_WRONLY | O_NDELAY) == -1) {
+                        printf("%d\n", privatefifo);
+                        perror(msg.fifo_name);
+                        exit(1);
+                    }
                     else {
-                        waitpid(0, &status, 0);
-                        printf("Ficheiro: %s\n", ficheiro);
-                        execlp("gzip", "gzip", ficheiro, NULL);
+                        printf("else\n");
+
+                        dup2(fd[1], 1);
+                        close(fd[0]);
+                        if (fork() == 0) execlp("sha1sum", "sha1sum", ficheiro, NULL);
+                        else {
+                            waitpid(-1, &status, 0);
+                            execlp("gzip", "gzip", ficheiro, NULL);
+                        }
                     }
                 }
+                else {
+                    waitpid(-1, &status, 0);
+                    printf("pai\n");
+                    close(fd[1]);
+                    read(fd[0], &shaisum, 160);
+                    c = strtok(shaisum, " ");
+                    strcpy(shaisum, c);
+                    printf("%s\n", shaisum);
+                    printf("%s\n", ficheiro);
+                    backupficheiro(ficheiro, shaisum);
+                }
             }
-            else {
-                waitpid(-1, &status, 0);
-                printf("pai\n");
-                close(fd[1]);
-                read(fd[0], &shaisum, 160);
-                c = strtok(shaisum, " ");
-                strcpy(shaisum, c);
-                printf("%s\n", shaisum);
-                printf("%s\n", ficheiro);
-                if (strcmp(comando, "backup") == 0) { backupficheiro(ficheiro, shaisum);}
-                else exit(3);
-            }
+            kill(msg.pid, SIGCONT);
         }
-        kill(msg.pid,SIGCONT);
     }
     unlink(fifo);
     return 0;
