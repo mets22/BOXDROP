@@ -2,10 +2,10 @@
 
 
 
-int existeFicheiro(char *ficheiro)
+int fileExists(char *file)
 {
-    int fd[2],x,temp,i,tlinha;
-    char* slink,*templinha,*linha;
+    int fd[2],x,temp,i,tline;
+    char* slink,*templine,*line;
     char *pathofbackup = getPathOfBackupFolder();
     pipe(fd);
 
@@ -14,9 +14,9 @@ int existeFicheiro(char *ficheiro)
       close(fd[1]);
       dup2(fd[0],1);
       while(read(fd[0],slink,1)!=0){
-        readlink(slink,templinha,tlinha);
-        linha=strndup(templinha,tlinha);
-        if(strcmp(linha,ficheiro)==0) return 1;
+        readlink(slink,templine,tline);
+        line=strndup(templine,tline);
+        if(strcmp(line,file)==0) return 1;
       }
       return 0;
     }else{
