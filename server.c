@@ -182,6 +182,10 @@ the public FIFO every time a client process finishes its activities.
             }
             kill(msg.pid, SIGCONT);
         }
+        else if(strcmp(comando, "restore") == 0)
+        {
+            
+        }
     }
     unlink(fifo);
     return 0;
