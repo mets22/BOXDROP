@@ -78,11 +78,27 @@ void backupficheiro(char *ficheiro, char *shaisum, int pid)
     }
 }
 
-/*void restoreficheiro(char *ficheiro)
+void restoreficheiro(char *ficheiro)
 {
+    char *dat, *meta;
+    int x,status,pid[4],i=0;
+    meta=getPathOfMetadataFolder();
+    x=readlink(meta,dat,20);
 
-    execlp("cp","cp", ,ficheiro, NULL);
-}*/
+    if(pid[i++]=fork()==0) {
+      execlp("cp","cp",ficheiro,dat, NULL);
+
+    } else {
+      waitpid(pid[0],&status,0);
+
+        if (pid[i++]=fork()==0) {
+        execlp("gunzip","gunzip",ficheiro);
+        }
+        else{
+          waitpid(pid[1],&status,0);
+        }
+    }
+}
 
 int main()
 {
