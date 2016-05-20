@@ -61,5 +61,6 @@ int createBackupFolders(){
             exit(EXIT_FAILURE);
         }
     }
+    printf("Pastas de Backup inicializadas com sucesso\n");
     return 0;
 }
