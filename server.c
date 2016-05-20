@@ -172,7 +172,7 @@ the public FIFO every time a client process finishes its activities.
                     waitpid(0, &status, 0);
                     n--;
                 }
-                if ((pid[i] = fork()) == 0) {
+                if (fork() == 0) {
                     if (privatefifo = open(msg.fifo_name, O_WRONLY | O_NDELAY) == -1) {
                         printf("%d\n", privatefifo);
                         perror(msg.fifo_name);
@@ -194,18 +194,20 @@ the public FIFO every time a client process finishes its activities.
                     waitpid(0, &status, 0);
                     printf("pai\n");
                     close(fd[1]);
-                    read(fd[0], &shaisum, 160); /*ESTE READ CARALHO!*/
-                    c = strtok(shaisum, " ");
-                    strcpy(shaisum, c);
-                    c=strtok(NULL,"\n");
-                    printf("%s\n", shaisum);
-                    printf("%s\n", ficheiro);
-                    if(fork()==0) backupficheiro(ficheiro, shaisum);
+                    while(read(fd[0], &shaisum, 160)>0) {  /*ESTE READ CARALHO! nem assim lÊ, com este ciclo devia funcionar*/
+                        c = strtok(shaisum, " ");
+                        strcpy(shaisum, c);
+                        //c = strtok(NULL, "\n");
+                        printf("%s\n", shaisum);
+                        printf("%s\n", ficheiro);
+                        i++;
+                        printf("I: %d\n", i);
+                        if (fork() == 0) backupficheiro(ficheiro, shaisum);
+                    }
                 }
 
                 printf("C: %s\n", c);
             }
-            kill(msg.pid, SIGCONT);
         }
         else if(strcmp(comando, "restore") == 0)
         {
@@ -219,6 +221,7 @@ the public FIFO every time a client process finishes its activities.
             }
             restoreficheiro(ficheiro);
         }
+        kill(msg.pid, SIGCONT);
     }
     unlink(fifo);
     return 0;
