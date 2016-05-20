@@ -6,11 +6,11 @@ all:server client
 folderhandler.o:folderhandler.h
 	cc $(CFLAGS) -c folderhandler.c
 
-server:server.h local.h folderhandler.o
+server:server.c server.h local.h folderhandler.o
 	cc $(CFLAGS) server.c folderhandler.c -o server
 
-client:client.h local.h folderhandler.o
-	cc $(CFLAGS) client.c -o client
+client:client.c client.h local.h folderhandler.o
+	cc $(CFLAGS) client.c folderhandler.o -o client
 
 clean:
 	rm -f server client  $(wildcard *.o)

@@ -1,10 +1,5 @@
-//
-// Created by mets on 29-04-2016.
-//
-
 #include "server.h"
-#include "local.h"
-#include "folderhandler.h"
+
 
 const char *metadata = "/.Backup/metadata/";
 const char *data = "/.Backup/data/";
@@ -15,14 +10,9 @@ char user[64];
 int existeFicheiro(char *ficheiro)
 {
     int fd[2],x,temp,i,tlinha;
-    char* slink,templinha,linha;
+    char* slink,*templinha,*linha;
     pipe(fd);
 
-    /*execlp("find","find","home/user/.Backup/metadata",ficheiro,0);
-    while(fgets(linha,20,0)!=NULL){
-          if(strcmp(linha,ficheiro)==0) return 1;
-    }*/
-    // escrever para 0 ler de 1
 
     if(x=fork()==0){
       close(fd[1]);
@@ -30,16 +20,15 @@ int existeFicheiro(char *ficheiro)
       while(read(fd[0],slink,1)!=0){
         readlink(slink,templinha,tlinha);
         linha=strndup(templinha,tlinha);
-        //printf("%s\n",linha);
         if(strcmp(linha,ficheiro)==0) return 1;
       }
-      printf("wrvwrv\n");
       return 0;
     }else{
         close(fd[0]);
         dup2(fd[1],0);
-        execlp("find","find","-L","/home/goncalo/Documentos","-xtype","l","-printf","%f",0);
-
+        execlp("find","find","-L","/home/nfernandes/.Backup/","-xtype","l","-printf","%f",0);
+        fprintf(stderr, "Erro na procura de ficheiros\n");
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -47,6 +36,7 @@ void backupficheiro(char *ficheiro, char *shaisum)
 {
     int status,pidp[4],i=0;
     char aux[128], newfile[512],linklocation[128],*c;
+
 
     printf("backupficheiro\n");
     strcpy(newfile, user);
@@ -85,8 +75,12 @@ void backupficheiro(char *ficheiro, char *shaisum)
 void restoreficheiro(char *ficheiro)
 {
     char *dat, *meta, actual[200];
-    int x,status,pid[4],i=0;
+    int x,status,i=0;
+    pid_t pid1,pid2;
     int error;
+    char *nameoffile;
+
+    dat =(char *) malloc(sizeof(char)*128);
     //vai buscar a pasta da metadata
     meta=getPathOfMetadataFolder();
     //vai buscar directoria actual
@@ -94,29 +88,22 @@ void restoreficheiro(char *ficheiro)
 
     strcat(meta,ficheiro);
 
-    printf("actual: %s\n",actual );
-    printf("meta: %s\n",meta );
     //vai buscar directoria para onde aponta o atalho
-    //x=readlink("/home/goncalo/.Backup/metadata/a.txt",dat,128);/*Este gajo é um camelo*/
-    error = errno;
-    printf("%d\n", errno);
-    printf("%d\n",x );
-    printf("dat: %s\n",dat );
+    x=readlink(meta,dat,128);
 
-
-    if(pid[i++]=fork()==0) {
-      printf("copiar\n");
-      execlp("cp","cp",dat,actual, NULL);
-
-    } else {
-      waitpid(pid[0],&status,0);
-
-        if (pid[i++]=fork()==0) {
-          printf("unzipar\n");
-          execlp("gunzip","gunzip",ficheiro,0);
+    if(pid1=fork()==0) {
+        printf("copiar\n");
+        execlp("cp","cp",dat,actual, NULL);
+        fprintf(stderr, "Erro ao copiar ficheiros\n");
+    }else {
+        waitpid(pid1,&status,0);
+        if (pid2=fork()==0) {
+            printf("unzipar\n");
+            execlp("gunzip","gunzip",ficheiro,0);
+            fprintf(stderr, "Erro ao extrair ficheiro\n");
         }
-          else{
-            waitpid(pid[1],&status,0);
+        else{
+            waitpid(pid2,&status,0);
         }
     }
 }
@@ -129,24 +116,25 @@ int main()
     FILE *fin;
     static char buffer[PIPE_BUF];
     char comando[10], ficheiro[128], *c,*ch, shaisum[161], fifo[128];
-    printf("AOK!\n");
+
     createBackupFolders();
     strcpy(user,getenv("HOME"));
     strcpy(fifo,user);
     strcat(fifo,"/.Backup/");
 
     strcat(fifo,PUBLIC);
-/*creating the PUBLIC fifo*/
+    /*creating the PUBLIC fifo*/
     printf("%d\n",mkfifo(fifo,0666));
 
-/*
-Server process opens the PUBLIC fifo in write mode to make sure that
-the PUBLIC fifo is associated with atleast one WRITER process. As a
-result it never receives EOF on the PUBLIC fifo. The server process
-will block any empty PUBLIC fifo waiting for additional messages to
-be written. This technique saves us from having to close and reopen
-the public FIFO every time a client process finishes its activities.
-*/
+    /*
+    Server process opens the PUBLIC fifo in write mode to make sure that
+    the PUBLIC fifo is associated with atleast one WRITER process. As a
+    result it never receives EOF on the PUBLIC fifo. The server process
+    will block any empty PUBLIC fifo waiting for additional messages to
+    be written. This technique saves us from having to close and reopen
+    the public FIFO every time a client process finishes its activities.
+    */
+
     printf("MORETHANOK!\n");
     if( (publicfifo = open(fifo, O_RDONLY)) < 0 ||
         (dummyfifo = open(fifo, O_WRONLY | O_NDELAY)) < 0) {
@@ -154,7 +142,7 @@ the public FIFO every time a client process finishes its activities.
         exit(1);
     }
     printf("lol\n");
-/*Read the message from PUBLIC fifo*/
+    /*Read the message from PUBLIC fifo*/
     while(read(publicfifo, &msg, sizeof(msg)) > 0) {
         printf("MSG: %s\n", msg.cmd_line);
         pipe(fd);
@@ -194,7 +182,7 @@ the public FIFO every time a client process finishes its activities.
                     waitpid(0, &status, 0);
                     printf("pai\n");
                     close(fd[1]);
-                    while(read(fd[0], &shaisum, 160)>0) {  /*ESTE READ CARALHO! nem assim lÊ, com este ciclo devia funcionar*/
+                    while(read(fd[0], &shaisum, 160)>0) {
                         c = strtok(shaisum, " ");
                         strcpy(shaisum, c);
                         //c = strtok(NULL, "\n");
