@@ -15,12 +15,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define B_SIZE (PIPE_BUF/2)
+#define B_SIZE (PIPE_BUF)
 
 const char *PUBLIC = "publicfifo";
 
 struct message {
-    char fifo_name[B_SIZE];
     char cmd_line[B_SIZE];
     int pid;
 };

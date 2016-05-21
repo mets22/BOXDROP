@@ -13,4 +13,4 @@ sobucli:client.c client.h local.h folderhandler.o
 	cc $(CFLAGS) client.c folderhandler.o -o sobucli
 
 clean:
-	rm -f server client  $(wildcard *.o)
+	rm -f sobusrv sobucli  $(wildcard *.o)

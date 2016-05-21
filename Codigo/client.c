@@ -1,30 +1,35 @@
 #include "client.h"
 
+char *response = NULL;
+
+void handler1(){
+    response = strdup("copiado");
+}
+void handler2(){
+    response = strdup("restaurado");
+}
+
 int main(int argc, char const *argv[]) {
 
-    int publicfifo, privatefifo, i;
+    int publicfifo, i;
     static char buffer[PIPE_BUF];
     char *string = (char*)calloc(B_SIZE,sizeof(char));
     char *backuppath = getPathOfBackupFolder();
     char fifo[128];
     struct message msg;
+    signal(SIGUSR1,handler1);
+    signal(SIGUSR2,handler2);
 
     strcpy(fifo,backuppath);
     strcat(fifo,PUBLIC);
     /*Using sprintf to create a unique fifo name
     and save into message structure*/
-    sprintf(msg.fifo_name, "%sfifo%d",backuppath, getpid());
+    /*sprintf(msg.fifo_name, "%sfifo%d",backuppath, getpid());*/
     msg.pid = getpid();
 
-    /*Creating the PRIVATE fifo*/
-    if(mkfifo(msg.fifo_name,0666) < 0) {
-        perror(msg.fifo_name);
-        exit(1);
-    }
 
     /*Opening PUBLIC fifo in WRITE ONLY mode*/
     if((publicfifo = open(fifo,O_WRONLY)) < 0) {
-        unlink(msg.fifo_name);
         perror(PUBLIC);
         exit(1);
     }
@@ -40,15 +45,9 @@ int main(int argc, char const *argv[]) {
 
     // escreve para o servidor
     write(publicfifo,&msg,sizeof(msg));
-    if(privatefifo = open(msg.fifo_name,O_RDONLY)){
-        unlink(msg.fifo_name);
-        perror(PUBLIC);
-        exit(1);
-    }
     pause();
+    printf("%s : %s \n",argv[2],response);
     free(string);
-    unlink(msg.fifo_name);
-    close(privatefifo);
     close(publicfifo);
     return 0;
 

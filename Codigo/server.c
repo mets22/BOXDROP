@@ -1,9 +1,11 @@
 #include "server.h"
 
-int quit;
+char * fifo = NULL;
 
 void stopserver(){
-    quit=1;
+    if(fifo!=NULL) unlink(fifo);
+    printf("A desligar o servidor\n");
+    exit(EXIT_SUCCESS);
 }
 
 int fileExists(char *file)
@@ -43,7 +45,6 @@ void backupfile(char *file, char *shaisum)
     strcat(aux,".gz");
     c=strtok(shaisum,"\n");
     strcat(newfile, c);
-    strcat(newfile,".gz");
 
 
     if(pidp[i++]=fork()==0) {
@@ -105,18 +106,18 @@ void restorefile(char *file)
 
 int main()
 {
-    int privatefifo, dummyfifo, publicfifo, n, fd[2], pid[5],status,i=0;
+    int dummyfifo, publicfifo, n, fd[2], pid[5],status,i=0;
     struct message msg;
     static char buffer[PIPE_BUF];
     char comando[10], ficheiro[128], *c,*ch, shaisum[161];
-    char * fifo;
-    quit=0;
+
+
     signal(SIGINT, stopserver);
     createBackupFolders();
     fifo = getPathOfBackupFolder();
     strcat(fifo,PUBLIC);
     /*creating the PUBLIC fifo*/
-    printf("%d\n",mkfifo(fifo,0666));
+    mkfifo(fifo,0666);
 
     /*
     Server process opens the PUBLIC fifo in write mode to make sure that
@@ -133,72 +134,64 @@ int main()
         exit(1);
     }
     /*Read the message from PUBLIC fifo*/
-    while(quit==0){
-        while(read(publicfifo, &msg, sizeof(msg)) > 0) {
-            pipe(fd);
-            ch=strtok(msg.cmd_line," ");
-            strcpy(comando,ch);
-            if (n > 5) {
-                waitpid(0, &status, 0);
-                n--;
-            }
-            if (strcmp(comando, "backup") == 0) {
-                while(ch = strtok(NULL, " ")) {
-                    n++;
-                    strcpy(ficheiro, ch);
-                    if (n > 5) {
-                        waitpid(0, &status, 0);
-                        n--;
-                    }
-                    if (fork() == 0) {
-                        if (privatefifo = open(msg.fifo_name, O_WRONLY | O_NDELAY) == -1) {
-                            printf("%d\n", privatefifo);
-                            perror(msg.fifo_name);
-                            exit(1);
-                        }
-                        else {
-                            dup2(fd[1], 1);
-                            close(fd[0]);
-                            if (fork() == 0) execlp("sha1sum", "sha1sum", ficheiro, NULL);
-                            else {
-                                wait(&status);
-                                execlp("gzip", "gzip", "-k", ficheiro, NULL);
-                            }
-                        }
+    while(read(publicfifo, &msg, sizeof(msg)) > 0) {
+        pipe(fd);
+        ch=strtok(msg.cmd_line," ");
+        strcpy(comando,ch);
+        if (n > 5) {
+            waitpid(0, &status, 0);
+            n--;
+        }
+        if (strcmp(comando, "backup") == 0) {
+            while(ch = strtok(NULL, " \n\t")) {
+                n++;
+                strcpy(ficheiro, ch);
+
+                if (n > 5) {
+                    waitpid(0, &status, 0);
+                    n--;
+                }
+                if (fork() == 0) {
+                    dup2(fd[1], 1);
+                    close(fd[0]);
+                    if (fork() == 0)
+                    {
+                        execlp("sha1sum", "sha1sum", ficheiro, NULL);
                     }
                     else {
-                        waitpid(0, &status, 0);
-                        printf("pai\n");
-                        close(fd[1]);
-                        while(read(fd[0], &shaisum, 160)>0) {
-                            c = strtok(shaisum, " ");
-                            strcpy(shaisum, c);
-                            //c = strtok(NULL, "\n");
-                            printf("%s\n", shaisum);
-                            printf("%s\n", ficheiro);
-                            i++;
-                            printf("I: %d\n", i);
-                            if (fork() == 0) backupfile(ficheiro, shaisum);
+                        wait(NULL);
+                        execlp("gzip", "gzip", "-k", ficheiro, NULL);
+                    }
+                }
+                else {
+                    waitpid(0, &status, 0);
+                    close(fd[1]);
+                    while(read(fd[0], &shaisum, 161)>0) {
+                        c = strtok(shaisum, " ");
+                        strcpy(shaisum, c);
+                        i++;
+                        if (fork() == 0) {
+                            backupfile(ficheiro, shaisum);
                         }
                     }
                 }
             }
-            else if(strcmp(comando, "restore") == 0)
-            {
-                while (c = strtok(NULL, " ")) {
-                    n++;
-                    strcpy(ficheiro, c);
-                    if (n > 5) {
-                        waitpid(0, &status, 0);
-                        n--;
-                    }
+            kill(msg.pid, SIGUSR1);
+        }
+        else if(strcmp(comando, "restore") == 0)
+        {
+            while (c = strtok(NULL, " ")) {
+                n++;
+                strcpy(ficheiro, c);
+                if (n > 5) {
+                    waitpid(0, &status, 0);
+                    n--;
                 }
-                restorefile(ficheiro);
             }
-            kill(msg.pid, SIGCONT);
+            restorefile(ficheiro);
+            kill(msg.pid,SIGUSR2);
         }
     }
-    printf("A desligar o servidor\n");
-    unlink(fifo);
+
     return 0;
 }
